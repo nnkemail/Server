@@ -13,7 +13,7 @@ class ApplicationController extends Controller {
   val serverActor = system.actorOf(ServerActor.props(), "ServerActor")
 
   def index = Action {request =>
-    Ok("Dotti club node")
+    Ok("Dotti club node" + request.session)
   }
 
   def socketGame = WebSocket.acceptWithActor[JsValue, JsValue] {request => out =>
