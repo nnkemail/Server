@@ -10,7 +10,7 @@ import play.api.Play.current
 
 class ApplicationController extends Controller {
   val system = ActorSystem("ServerSystem", settings.systemActorConfig)
-  val serverActor = system.actorOf(ServerActor.props(), "ServerActor")
+  val serverActor = system.actorOf(NodeActor.props(), "ServerActor")
 
   def index = Action {request =>
     Ok("Dotti club node")

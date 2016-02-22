@@ -14,7 +14,7 @@ import model.Util.Settings
 import model.Util.util.settings
 import scala.collection.mutable.HashMap
 
-class ServerActor() extends Actor {
+class NodeActor() extends Actor {
   val masterServerActor = context.actorSelection(settings.masterServerActorSelection)
   var rooms = HashMap.empty[Int, ActorRef]
   
@@ -50,7 +50,7 @@ class ServerActor() extends Actor {
   }
 }
 
-object ServerActor {
-  def props() = Props(new ServerActor())
+object NodeActor {
+  def props() = Props(new NodeActor())
 }
 

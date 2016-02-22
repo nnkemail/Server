@@ -17,29 +17,26 @@ trait BallPhysics { this: MovableEntity =>
     var X = position.x + ( speed * Math.sin(moveAngle) );
     var Y = position.y + ( speed * Math.cos(moveAngle) );
 
-    // Movement engine
-    speed = speed * moveDecay; // Decaying speed
+ 
+    speed = speed * moveDecay; 
     
     _moveEngineTicks = _moveEngineTicks - 1;
     if (_moveEngineTicks <= 0)
        _isMoveEngineActive = false
       
-    // Border check - Bouncy physics
+  
     var radius = 40;
     if ((position.x - radius) < settings.border.left) {
-        // Flip angle horizontally - Left side
         moveAngle = 6.28 - moveAngle;
         X = settings.border.left + radius;
     }
     
     if ((position.x + radius) > settings.border.right) {
-        // Flip angle horizontally - Right side
         moveAngle = 6.28 - moveAngle;
         X = settings.border.right - radius;
     }
     
     if ((position.y - radius) < settings.border.top) {
-        // Flip angle vertically - Top side
         moveAngle = if (moveAngle <= 3.14) 
           3.14 - moveAngle 
         else

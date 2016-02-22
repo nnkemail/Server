@@ -13,7 +13,7 @@ object PlayerActor {
   def props(out: ActorRef, server: ActorRef, userID: Option[String], nick: String) = Props(new PlayerActor(out, server, userID, nick))
 }
 
-class PlayerActor(val out: ActorRef, var server: ActorRef, var userID: Option[String], var nick: String) extends Actor with PlayerPacketHandler with ActorLogging  {
+class PlayerActor(val out: ActorRef, var server: ActorRef, var userID: Option[String], var nick: String) extends Actor with PlayerPacketHandler with ActorLogging {
   //implicit val userFormat = Json.format[PlayerData]
   var name: String = nick
   var roomActor: ActorRef = null;
@@ -44,96 +44,71 @@ class PlayerActor(val out: ActorRef, var server: ActorRef, var userID: Option[St
       for (cell <- cells)
         cell.onRemove()
     }
-    
+
     roomActor ! Leave(userID)
     roomActor ! RemoveFromLeaderBoard(playerID)
-    
+
     if (score > 0) {
-      userID map { uID => roomActor ! SaveMyScore(score, uID)}
+      userID map { uID => roomActor ! SaveMyScore(score, uID) }
       score = 0;
     }
   }
-  
+
   def getVisibleEntities(): List[Entity] = {
     visibleEntities.toList
   }
-  
+
   def playerReceive: Receive = {
-    case SpawnData(uID: Int, initialPosition: Position, _roomActor: ActorRef, world: WorldGrid, _worldActor: ActorRef) => 
+    case SpawnData(uID: Int, initialPosition: Position, _roomActor: ActorRef, world: WorldGrid, _worldActor: ActorRef) =>
       println("Przyszlo spawn data");
       playerID = uID
       roomActor = _roomActor
-      //worldGrid.grid = world.grid
       worldGrid = world
       worldActor = _worldActor
       val newCell = Cell(this, initialPosition, worldGrid, _worldActor)
       cells += newCell
       updateView();
       println("Po update view");
-      //out ! Json.obj("type" -> "spawn", "id" -> newCell.id, "x" -> newCell.position.x, "y" -> newCell.position.y, 
-      //    "size" -> newCell.getPhysicalSize(), "red" -> newCell.color.getRed, "green" -> newCell.color.getGreen, "blue" -> newCell.color.getBlue)
       sendMyFristCellID(newCell.id)
       sendNewScore(score)
       connected = true
       println("Spawn player zakonczone");
-    
+
     case GameTick => {
       if (connected) {
         //println ("przyszlo tick");
-      
-        for (cell <- cells) 
+
+        for (cell <- cells)
           cell.move()
-          
-        for (cell <- cells) 
+
+        for (cell <- cells)
           cell.checkCollisionWithOwnCells()
-           
-        eatenOwnCells.clear()  
+
+        eatenOwnCells.clear()
         for (cell <- cells) {
           cell.eat()
           cell.updatePositionInGrid()
         }
-        
+
         for (cell <- eatenOwnCells) {
           cells -= cell
           cell.onRemove()
         }
-        
+
         var allMass = 0
-        
+
         for (cell <- cells)
-          allMass += cell.mass 
-          
+          allMass += cell.mass
+
         log.info("Calkowita masa: " + allMass)
         log.info("Calkowita ilosc: " + cells.size);
-          
-        var i: Int = 0  
-        for (cell <- cells) {
-          //print("Numer celli: " + i + " wartosc: ");
-          //println(cell);
-        }
-        
-        /*
 
-  
-        for (celln <- cells) 
-          celln.eat()
-          * */     
-        updateNodes()  
-        /*
-        var toSend = new ListBuffer[PlayerData]()
-        updateView()
-        for (e: Entity <- worldGrid.getListOfEntities(Position(viewLeft, viewTop), Position(viewRight, viewBottom)))
-        {
-        	//out ! Json.obj("type" -> "coord", "id" -> e.id, "x" -> e.position.x, "y" -> e.position.y, "size" -> e.getPhysicalSize())
-        	toSend +=  PlayerData(e.id, e.position.x, e.position.y, e.getPhysicalSize(), e.color.getRed, e.color.getGreen, e.color.getBlue)
-        }
-        
-        out ! Json.obj("type" -> "coord", "playerData" -> toSend.toList);  */ 
-     }
+        updateNodes()
+      }
     }
-    
-    case RestartGame(startPosition: Position) => 
-      score= 0
+
+    case RestartGame(startPosition: Position) =>
+      score = 0
       totalMass = 0
       isInTheTop = false
       cells = HashSet.empty[Cell]
@@ -143,7 +118,7 @@ class PlayerActor(val out: ActorRef, var server: ActorRef, var userID: Option[St
       centerY = 0
       viewLeft = 0
       viewRight = 0
-      viewTop  = 0
+      viewTop = 0
       viewBottom = 0
       eatenOwnCells = HashSet.empty[Cell]
       val newCell = Cell(this, startPosition, worldGrid, worldActor)
@@ -151,144 +126,109 @@ class PlayerActor(val out: ActorRef, var server: ActorRef, var userID: Option[St
       sendMyFristCellID(newCell.id)
       sendNewScore(score)
       updateView()
-      
-    
+
     case NewLeaderBoard(leaderBoard: List[LeaderBoardEntry]) => {
       if (leaderBoard.length <= 10 || leaderBoard.last.totalMass <= this.getTotalMass(true)) {
         if (!cells.isEmpty)
           sender ! new LeaderBoardEntry(this.playerID, this.name, this.getTotalMass(true))
-     //   isInTheTop = true
-      } 
+        //   isInTheTop = true
+      }
       //else isInTheTop = false
       println(leaderBoard)
-      this.sendLeaderBoard(leaderBoard: List[LeaderBoardEntry])      
+      this.sendLeaderBoard(leaderBoard: List[LeaderBoardEntry])
     }
-    
+
     case AddMass(mass: Int, eatingEntity: Entity) => {
-      println("Przyszlo add mass, mass: " + mass + "entity: " +  eatingEntity)
+      println("Przyszlo add mass, mass: " + mass + "entity: " + eatingEntity)
       eatingEntity match {
-        case c: Cell => 
+        case c: Cell =>
           if (cells.contains(c)) {
             log.info("ADD MASS W CELLI")
             c.addMass(mass)
             c.updatePositionInGrid()
             score += mass
             sendNewScore(score)
-            log.info("Masa po dodaniu: " + c.mass);         
+            log.info("Masa po dodaniu: " + c.mass);
           } else {
             log.info("PRZYSZLO ADD MASS NIEOBSLUZONE ---------------------------")
           }
       }
     }
-    
+
     case SplitCellByVirusCollision(sourceCell: Cell, angle: Double, mass: Int, speed: Double) => {
-      splitCellByVirusCollision(sourceCell, angle, mass, speed)   
+      splitCellByVirusCollision(sourceCell, angle, mass, speed)
     }
-      
+
     case EatCell(c: Cell, eatingEntity: Entity) => {
-       log.info ("playerID :" + this.playerID + " przyszlo eat cell " + "Cella do zjedzenia: id: " + c.id + " Cela jedzaca: " + eatingEntity.id);
-    	  //c.onRemove()
-  /*      println(this.playerID + " Id celli w msg: " + c.id);
-        println(this.playerID + " Id cell ktora dostala eatCell");
-        for (ce <- cells)
-          println(this.playerID + " c.id :", ce.id);
- /*   	  for (myCell <- cells)
-    	    breakable {
-    	      if (myCell.id == c.id)
-    	      {
-    	        cells -= myCell
-    	        break
-    	      }
-    	  }*/
-        if (cells.contains(c)) {
-          breakable {
-            eatingEntity match {
-              case eatingCell: Cell =>  
-                if ((eatingCell.owner.playerID == this.playerID) && (!cells.contains(eatingCell))) {
-                  println(eatingCell)
-                  println("BREAK");
-                  break
-                }
-            }
-            println("BREAK OMIENITY");
-            cells -= c
-            c.onRemove()
-            updateView()   
-            sender ! AddMass(c.mass, eatingEntity)
-          }
-          println("PO BREAKU");
-        } */
-       
-        if (cells.contains(c)) {
-          cells -= c
-          c.onRemove()
-          updateView()   
-          sender ! AddMass(c.mass, eatingEntity)
-          log.info("PRZYSZLO EAT CELL------------------------")
+      log.info("playerID :" + this.playerID + " przyszlo eat cell " + "Cella do zjedzenia: id: " + c.id + " Cela jedzaca: " + eatingEntity.id);
+
+      if (cells.contains(c)) {
+        cells -= c
+        c.onRemove()
+        updateView()
+        sender ! AddMass(c.mass, eatingEntity)
+        log.info("PRZYSZLO EAT CELL------------------------")
+      }
+
+      log.info("Po usunieciu");
+      for (ce <- cells)
+        log.info("c.id :" + ce.id);
+
+      if (cells.isEmpty) {
+        showEndMenu(score)
+        if (score > 0) {
+          userID map { uID => roomActor ! SaveMyScore(score, uID) }
+          score = 0;
         }
-        
-    	  log.info("Po usunieciu");
-    	  for (ce <- cells)
-          log.info("c.id :" + ce.id);
-    	
-    	if (cells.isEmpty) {
-    	    showEndMenu(score)
-    	    if (score > 0) {
-    	      userID map { uID => roomActor ! SaveMyScore(score, uID)}
-    	      score = 0;
-    	    }
-    	}
-    } 
-         
+      }
+    }
+
     case _ => {
       out ! Json.obj("Hmm" -> "Cos nie tak")
     }
   }
-  
-  def receive = playerPacketHandler orElse playerReceive 
+
+  def receive = playerPacketHandler orElse playerReceive
   override type Receive = PartialFunction[Any, Unit]
-  
+
   def getTotalMass(reCalcMass: Boolean) = {
     if (reCalcMass) {
       var s = 0;
-      for (myCell <- this.cells) 
+      for (myCell <- this.cells)
         s += myCell.mass;
       this.totalMass = s;
     }
     this.totalMass;
   };
-  
+
   def splitCells() = {
     if (cells.size <= settings.playerMaxCells) {
       var newCells = ListBuffer.empty[Cell]
       for (cell <- cells) {
-        if (cell.mass > settings.playerMinMassToSplit)       
-    	    newCells += cell.split()
+        if (cell.mass > settings.playerMinMassToSplit)
+          newCells += cell.split()
       }
+
       for (newCell <- newCells) {
         cells += newCell
-        newCell.updatePositionInGrid() 
+        newCell.updatePositionInGrid()
         sendNewCellId(newCell.id)
+      }
 
-      
-      /*for (newCell <- newCells) {
-        out ! Json.obj("type" -> "spawn", "id" -> newCell.id, "x" -> newCell.position.x, "y" -> newCell.position.y, 
-            "size" -> newCell.getPhysicalSize(), "red" -> newCell.color.getRed, "green" -> newCell.color.getGreen, "blue" -> newCell.color.getBlue)*/
-            }
       updateView()
       for (tmpCell <- cells)
         println(tmpCell.mass)
     }
-    
-   var allMass = 0
-        
-   for (cell <- cells)
-   allMass += cell.mass 
-          
-   println("Calkowita masa: " + allMass)
-   println("Calkowita ilosc: " + cells.size);
+
+    var allMass = 0
+
+    for (cell <- cells)
+      allMass += cell.mass
+
+    println("Calkowita masa: " + allMass)
+    println("Calkowita ilosc: " + cells.size);
   }
-  
+
   def ejectMass() = {
     for (cell <- cells)
       if (cell.mass >= settings.minMassEject) {
@@ -296,13 +236,13 @@ class PlayerActor(val out: ActorRef, var server: ActorRef, var userID: Option[St
         //worldActor ! EjectedMass(newMass)
       }
   }
-  
+
   def splitCellByVirusCollision(sourceCell: Cell, angle: Double, mass: Int, speed: Double) = {
     // Starting position
     var startPos = Position(sourceCell.position.x, sourceCell.position.y)
     val newCell = Cell(this, startPos, worldGrid, worldActor)
-    
-    newCell.mass = mass 
+
+    newCell.mass = mass
     newCell.color = sourceCell.color
     newCell.moveAngle = angle
     newCell.speed = speed
@@ -312,98 +252,77 @@ class PlayerActor(val out: ActorRef, var server: ActorRef, var userID: Option[St
     sendNewCellId(newCell.id)
     updateView()
     //newCell.ignoreCollision = true; // Remove collision checks
-};
-  
+  };
+
   def updateNodes() = {
     updateView();
-    
-    //var toUpdateUnique = HashSet.empty[Entity]
-    var newVisible =  worldGrid.getListOfEntities(Position(viewLeft, viewTop), Position(viewRight, viewBottom))
-    //var toRemove = visibleEntities diff newVisible
-    //var toUpdateList = (newVisible diff visibleEntities)
-    
-    //var toRemove = visibleEntities filter ((e: Entity) => !newVisible.contains(e))
-    //var toUpdateList = (newVisible diff toRemove)
-    //for (e <- toUpdateList)
-     // toUpdateUnique += e
-    
-    //var shouldUpdateCandiates = newVisible intersect visibleEntities 
-    
-    //for (e <- shouldUpdateCandiates)
-    //  if (e.shouldUpdate())
-    //    toUpdateUnique += e
-    
-    //visibleEntities = newVisible
-    //println(toRemove)
-    //println(toUpdateUnique)
-    
+
+    var newVisible = worldGrid.getListOfEntities(Position(viewLeft, viewTop), Position(viewRight, viewBottom))
+
     var removals = HashSet.empty[Entity]
     var updates = HashSet.empty[Entity]
-         for (e <- visibleEntities) {
-             if (!newVisible.contains(e)) {
-                        // Remove from player's screen
- 
-              removals.add(e);
-                    }
-                }
-    
-    visibleEntities = visibleEntities filterNot (x=>  removals contains x)
-    
-    for (e <- newVisible) {
-                    if (!visibleEntities.contains(e)) {
-                        visibleEntities += e
-                        updates.add(e);
-                    }
+    for (e <- visibleEntities) {
+      if (!newVisible.contains(e)) {
+        removals.add(e);
+      }
     }
-                    
+
+    visibleEntities = visibleEntities filterNot (x => removals contains x)
+
+    for (e <- newVisible) {
+      if (!visibleEntities.contains(e)) {
+        visibleEntities += e
+        updates.add(e);
+      }
+    }
+
     for (e <- visibleEntities) {
 
-            if (e.shouldUpdate()) {
-                updates.add(e);
-            }
-        }
-    
-     
-    sendUpdatesAndRemoves(removals.toList, updates.toList)   
-    
+      if (e.shouldUpdate()) {
+        updates.add(e);
+      }
+    }
+
+    sendUpdatesAndRemoves(removals.toList, updates.toList)
+
   }
-  
+
   def updateRange() = {
-      var totalSize = 1.0D;
-      for (cell <- cells) 
-        totalSize += cell.getPhysicalSize();
-       
-      var factor = Math.pow(Math.min(64.0D / totalSize, 1), 0.4D);
-      rangeX = settings.view.baseX / factor;
-      rangeY = settings.view.baseY / factor;
+    var totalSize = 1.0D;
+    for (cell <- cells)
+      totalSize += cell.getPhysicalSize();
+
+    var factor = Math.pow(Math.min(64.0D / totalSize, 1), 0.4D);
+    rangeX = settings.view.baseX / factor;
+    rangeY = settings.view.baseY / factor;
   }
 
   def updateCenter(): Unit = {
-  		if (cells.isEmpty) 
-  			return
- 
-  		var size = cells.size;
-  		var x: Double = 0;
-  		var y: Double = 0;
+    if (cells.isEmpty)
+      return
 
-  		for (cell <- cells) {
-  			x += cell.position.x
-  					y += cell.position.y
-  		}
+    var size = cells.size;
+    var x: Double = 0;
+    var y: Double = 0;
 
-  		this.centerX = x / size;
-  		this.centerY = y / size;
+    for (cell <- cells) {
+      x += cell.position.x
+      y += cell.position.y
+    }
+
+    this.centerX = x / size;
+    this.centerY = y / size;
   }
 
   def updateView() = {
-      updateRange();
-      updateCenter();
+    updateRange();
+    updateCenter();
 
-      viewTop = centerY - rangeY;
-      viewBottom = centerY + rangeY;
-      viewLeft = centerX - rangeX;
-      viewRight = centerX + rangeX;
+    viewTop = centerY - rangeY;
+    viewBottom = centerY + rangeY;
+    viewLeft = centerX - rangeX;
+    viewRight = centerX + rangeX;
 
-      //lastViewUpdateTick = world.getServer().getTick();
+    //lastViewUpdateTick = world.getServer().getTick();
   }
 }
