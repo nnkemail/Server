@@ -39,23 +39,10 @@ abstract class Entity(eType: EntityType, ePosition: Position, worldGrid: WorldGr
     def addMass(addMass: Int) = { _mass = _mass + addMass}
     def isSpiked: Boolean = _spiked;
     def isSpiked_= (isSpikedArg: Boolean) = { _spiked = isSpikedArg }
-    //def consumer = _consumer;
     
     addToWorldGrid()
-    /*
-    def collisionCheck(bottomY: Double, topY: Double, rightX: Double , leftX: Double): Boolean = {
-    	if (this.position.x > rightX || this.position.x < leftX || this.position.y > bottomY || this.position.y < topY) {
-    		return false;
-    	}
-
-    	true;
-    }*/
     
     def collisionCheck(other: Entity): Boolean = {
-      // IF (O1O2 + r <= R) THEN collided. (O1O2: distance b/w 2 centers of cells)
-      // (O1O2 + r)^2 <= R^2
-      // approximately, remove 2*O1O2*r because it requires sqrt(): O1O2^2 + r^2 <= R^2
-
       var dx = this.position.x - other.position.x;
       var dy = this.position.y - other.position.y;
 
