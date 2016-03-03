@@ -40,16 +40,20 @@ class PlayerActor(val out: ActorRef, var server: ActorRef, var userID: Option[St
   var eatenOwnCells = HashSet.empty[Cell]
 
   override def postStop() = {
+    cleanAfterGame()
+    roomActor ! Leave(userID)
+  }
+
+  def cleanAfterGame() = {
     if (!cells.isEmpty) {
       for (cell <- cells)
         cell.onRemove()
     }
-
-    roomActor ! Leave(userID)
+    
     roomActor ! RemoveFromLeaderBoard(playerID)
-
+    
     if (score > 0) {
-      userID map { uID => roomActor ! SaveMyScore(score, uID) }
+      userID map { uID => roomActor ! SaveMyScore(score, uID)}
       score = 0;
     }
   }
@@ -108,6 +112,7 @@ class PlayerActor(val out: ActorRef, var server: ActorRef, var userID: Option[St
     }
 
     case RestartGame(startPosition: Position) =>
+      cleanAfterGame()
       score = 0
       totalMass = 0
       isInTheTop = false

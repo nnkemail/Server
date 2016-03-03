@@ -13,8 +13,13 @@ import model.Entities._
 import model.Util.Settings
 import model.Util.util.settings
 import scala.collection.mutable.HashMap
+import akka.actor.{ ActorRef, FSM }
 
-class NodeActor() extends Actor {
+sealed trait State
+case object Idle extends State
+case object Active extends State
+
+class NodeActor() extends Actor with FSM [State] {
   val masterServerActor = context.actorSelection(settings.masterServerActorSelection)
   var rooms = HashMap.empty[Int, ActorRef]
   
@@ -39,8 +44,8 @@ class NodeActor() extends Actor {
       } else 
         sender ! AddNewServerRoomResponse(None)
 
-    case UserJoinedGame(userID, roomID) =>
-      masterServerActor ! UserJoinedGame(userID, roomID)
+    case UserJoinedGame(userID, roomID, nick) =>
+      masterServerActor ! UserJoinedGame(userID, roomID, nick)
       
     case UserLeftGame(userID) =>
       masterServerActor ! UserLeftGame(userID)
