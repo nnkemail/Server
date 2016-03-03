@@ -79,7 +79,7 @@ trait PlayerPacketHandler{ this: PlayerActor =>
            println("Packet Hander Join Room");
            var idRoom = (msg \ "idRoom").as[Int]; 
            //this.name = (msg \ "name").as[String] 
-           this.server ! JoinRoom(idRoom, this.userID)
+           this.server ! JoinRoom(idRoom, this.userID, name)
            
          case "Coord" => { mousePosition.x = (msg \ "x").as[Double]; mousePosition.y = (msg \ "y").as[Double];}
          case "space" => splitCells(); //println("przyszlo space");

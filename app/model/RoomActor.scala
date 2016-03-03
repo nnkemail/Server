@@ -36,11 +36,11 @@ class RoomActor(id: Int) extends Actor {
   }
   
   def receive = {
-    case Join(userIDOption: Option[String]) =>
+    case Join(userIDOption: Option[String], nick: String) =>
       workingPlayers = workingPlayers + 1;
       players += sender;
       sender ! SpawnData(util.nextSysId(), util.getRandomPosition(), self, worldGrid, worldActor)
-      userIDOption map {userID => context.parent ! UserJoinedGame(userID, id)}
+      userIDOption map {userID => context.parent ! UserJoinedGame(userID, id, nick)}
       println("Przyszlo Join");
 
     case Leave(userIDOption: Option[String]) =>
