@@ -52,7 +52,8 @@ case class AddNewRoom(title: String, lat: Double, lng: Double) extends ServerMes
 
 
 case class AddFacebookFriend(myFacebookID: String, friendFacebookID: String) extends ServerMessage
-case class NotifyFriendAboutMyNewRoom(userID: UUID, roomID: Option[Int], nick: Option[String]) extends ServerMessagecase class LeaveChatMap(userID: Option[UUID]) extends ServerMessage
+case class NotifyFriendAboutMyNewRoom(userID: UUID, roomID: Option[Int], nick: Option[String]) extends ServerMessage
+case class LeaveChatMap(userID: Option[UUID]) extends ServerMessage
 case class FriendChangedRoomPacket(friendID: UUID, roomID: Int) extends ServerMessage
 case class GetUsersRooms(users: List[UUID]) extends ServerMessage
 case class AddedNewServerRoom(roomID: Int, roomDsc: RoomDescription) extends ServerMessage
