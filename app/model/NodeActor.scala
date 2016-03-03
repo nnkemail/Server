@@ -15,11 +15,7 @@ import model.Util.util.settings
 import scala.collection.mutable.HashMap
 import akka.actor.{ ActorRef, FSM }
 
-sealed trait State
-case object Idle extends State
-case object Active extends State
-
-class NodeActor() extends Actor with FSM [State] {
+class NodeActor() extends Actor {
   val masterServerActor = context.actorSelection(settings.masterServerActorSelection)
   var rooms = HashMap.empty[Int, ActorRef]
   
@@ -28,12 +24,12 @@ class NodeActor() extends Actor with FSM [State] {
   }
   
   def receive = {
-    case JoinRoom(roomID: Int, userID: Option[String]) =>
+    case JoinRoom(roomID: Int, userID: Option[String], nick: String)=>
       println("przyszlo join Room")
       val roomActorOption = rooms.get(roomID)
       
       roomActorOption match {
-        case Some(roomActor) => roomActor forward Join(userID)
+        case Some(roomActor) => roomActor forward Join(userID, nick)
         case None =>;  //TODO
       }  
           
